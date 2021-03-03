@@ -41,7 +41,9 @@ from spacy.matcher import PhraseMatcher
 base_path = os.path.dirname(__file__)
 
 
-nlp = spacy.load('en_core_web_sm')
+nlp = spacy.load('en_core_web_sm')  #for efficiency
+#nlp = spacy.load('en_core_web_trf') ##for accuracy
+'''in case of version errors try this: https://stackoverflow.com/a/66168296/9144250 '''
 custom_nlp2 = spacy.load(os.path.join(base_path, "degree","model"))
 
 # initialize matcher with a vocab
