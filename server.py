@@ -10,6 +10,9 @@ import requests
 from werkzeug.utils import secure_filename
 # from resume_parser2.resumeparse import resumeparse
 # from sseclient import SSEClient
+import firebase_admin
+import google.cloud
+from firebase_admin import credentials, firestore
 
 app = Flask(__name__)  # initializing flask app
 CORS(app)  # to avoid CORS errors
@@ -18,6 +21,12 @@ UPLOAD_FOLDER = '../uploads'
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+#firestore sdk code
+cred = credentials.Certificate("./key.json")
+firebase_admin.initialize_app(cred)
+
+# documento = db.collection(u'BD_canciones').document(u'cancion4')
 
 # cong = {
 
@@ -49,6 +58,51 @@ def allowed_file(filename):
 @app.route('/', methods=['GET'])
 def Welcome():
     return jsonify({'status': "success", 'message': "Welcome to Resume Parser API"})
+
+
+@app.route('/GetBehaviours/<userid>', methods=['GET'])
+def GetBehaviours(userid):
+    print(userid)
+    db = firestore.client()
+    # docs = db.collection(u'cities').where(u'capital', u'==', True).stream()
+
+    try:
+        userChoices = db.collection(u'Behaviour_DB').where(u'userId', u'==', int(userid)).stream()
+        # docs = userChoices.get()
+        userChoicesList = []
+        for doc in userChoices:
+            userChoicesList.append(doc.to_dict())
+            # print(u'Doc Data:{}'.format(doc.to_dict()))
+
+        return jsonify({'status': "success", 'message': "Records Found", 'data': userChoicesList})
+    except google.cloud.exceptions.NotFound:
+        print(u'Missing data')
+        return jsonify({'status': "Failed", 'message': "No Records Found"})
+
+
+@app.route('/SetBehaviours/<userid>', methods=['POST'])
+def SetBehaviours(userid):
+    db = firestore.client()
+
+    try:
+        data = request.form['data']
+        data = list(eval(data))
+        for item in data:
+            # print(item)
+            docId = userid+"-"+item['cardId']
+            db.collection(u'Behaviour_DB').document(docId).set(item)
+            # print(res)
+        # for doc in userChoices:
+            # print(u'Doc Data:{}'.format(doc.to_dict()))
+        # doc_ref.add({u'name': u'test', u'added': u'just now'})
+        # db.collection(u'Behaviour_DB').doc('').update({ "friends": { "friend-uid-3": true } })
+        # doc_ref.set(, { merge: true });
+
+        return jsonify({'status': "success", 'message': "Data Updated Successfully"})
+    except Exception as e: 
+        print(e)
+        return jsonify({'status': "Failed", 'message': "Something Went Wrong"})
+
 
 @app.route('/UploadFile', methods=['POST'])
 def UploadFile():
