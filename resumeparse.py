@@ -1,6 +1,6 @@
 
 from __future__ import division
-import nltk
+# import nltk
 
 # nltk.download('punkt')
 # nltk.download('averaged_perceptron_tagger')
@@ -14,7 +14,6 @@ import re
 import os
 from datetime import date
 
-import nltk
 import docx2txt
 import pandas as pd
 from tika import parser
@@ -27,10 +26,12 @@ import spacy
 from spacy.matcher import Matcher
 from spacy.matcher import PhraseMatcher
 
-import sys
-import operator
-import string
-import nltk
+import data_preparation
+
+# import sys
+# import operator
+# import string
+# import nltk
 from stemming.porter2 import stem
 
 from spacy.lang.en import English
@@ -46,7 +47,6 @@ nlp = spacy.load('en_core_web_sm')  #for efficiency
 '''in case of version errors try this: https://stackoverflow.com/a/66168296/9144250 '''
 custom_nlp2 = spacy.load(os.path.join(base_path, "degree","model"))
 
-# initialize matcher with a vocab
 matcher = Matcher(nlp.vocab)
 
 file = os.path.join(base_path,"titles_combined.txt")
@@ -94,6 +94,7 @@ class resumeparse(object):
         'army experience',
         'military experience',
         'military background',
+        'Work Experience'
     )
 
     certification_and_training = (
@@ -204,6 +205,7 @@ class resumeparse(object):
     accomplishments = (
         'accomplishmnets',
         'key accomplishments',
+        'achievements',
         
     
     )
@@ -597,19 +599,19 @@ class resumeparse(object):
         degree = [ent.text.replace("\n", " ") for ent in list(doc.ents) if ent.label_ == 'Degree']
         return list(dict.fromkeys(degree).keys())
     
-    def extract_skills(text):
+    # def extract_skills(text):
 
-        skills = []
+    #     skills = []
 
-        __nlp = nlp(text.lower())
-        # Only run nlp.make_doc to speed things up
+    #     __nlp = nlp(text.lower())
+    #     # Only run nlp.make_doc to speed things up
 
-        matches = skillsmatcher(__nlp)
-        for match_id, start, end in matches:
-            span = __nlp[start:end]
-            skills.append(span.text)
-        skills = list(set(skills))
-        return skills
+    #     matches = skillsmatcher(__nlp)
+    #     for match_id, start, end in matches:
+    #         span = __nlp[start:end]
+    #         skills.append(span.text)
+    #     skills = list(set(skills))
+    #     return skills
     
 
     def read_file(file):
@@ -677,7 +679,7 @@ class resumeparse(object):
         
         doc = nlp(full_text)
         for match_id, start, end in skillsmatcher(doc):
-            skills.append(doc[start:end])
+            skills.append(str(doc[start:end]))
 #         skills = ""
 
 #         if len(resume_segments['skills'].keys()):
@@ -689,7 +691,7 @@ class resumeparse(object):
 #             skills = resumeparse.extract_skills(full_text)
 #         skills = list(dict.fromkeys(skills).keys())
         
-        return {
+        result = {
             "email": email,
             "phone": phone,
             "name": name,
@@ -700,7 +702,13 @@ class resumeparse(object):
             "linkedin":li,
             "projects":accomp,
             "accomplishments":a,
-            "training and certifications":training
+            "certifications":training,
+            "grade_input": []
         }
 
+        grade_input = data_preparation.getSingleResult(full_text, result)
+
+        result['grade_input'] = grade_input
+
+        return result
 

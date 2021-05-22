@@ -8,16 +8,18 @@ import math
 import requests
 # import pyrebase
 from werkzeug.utils import secure_filename
-# from resume_parser2.resumeparse import resumeparse
+from resumeparse import resumeparse
 # from sseclient import SSEClient
 import firebase_admin
 import google.cloud
 from firebase_admin import credentials, firestore
+from models import Model
+import skillSuggestion
 
 app = Flask(__name__)  # initializing flask app
 CORS(app)  # to avoid CORS errors
 
-UPLOAD_FOLDER = '../uploads'
+UPLOAD_FOLDER = './uploads'
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -45,9 +47,9 @@ firebase_admin.initialize_app(cred)
 # path_on_cloud = "resumes/file.pdf"
 
 
-# def parse_file(filename):
-#     resume = resumeparse.read_file(filename)
-#     return resume
+def parse_file(filename):
+    resume = resumeparse.read_file(filename)
+    return resume
 
 
 def allowed_file(filename):
@@ -108,31 +110,41 @@ def SetBehaviours(userid):
 def UploadFile():
     print("inside upload file")
     if request.method == 'POST':
-        print(request)
-        print(request.files)
-        # check if the post request has the file part
+        # print(request)
+        # print(request.files)
         if 'resume' not in request.files:
             print('No file part')
-            return jsonify({'status': "failure", 'message': "No file part"})
+            return jsonify({'status': "FAIL", 'message': "No file part"})
         file = request.files['resume']
-        # if user does not select file, browser also
-        # submit an empty part without filename
         if file.filename == '':
             print('No selected file')
-            return jsonify({'status': "failure", 'message': "No Selected File"})
+            return jsonify({'status': "FAIL", 'message': "No Selected File"})
         if file and allowed_file(file.filename):
-            print(file.filename)
-            # filename = secure_filename(file.filename)
+            print("FileName is: "+str(file.filename))
+            filename = secure_filename(file.filename)
             # path_on_cloud = "resumes/"+filename
-            # file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             # storage.child(path_on_cloud).put(
             #     os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            # resume = parse_file(os.path.join(
-            #     app.config['UPLOAD_FOLDER'], filename))
+            resume = parse_file(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             # print(resume)
+            if len(resume['grade_input']) > 0:
+                model = Model()
+                classifier = model.svm_classifier()
+                prediction = classifier.predict([resume['grade_input']])
+                # print(prediction)
+            else:
+                print("resume.grade_input is empty")
 
-    return jsonify({'status': "success", 'message': "File Uploaded Successfully"})
+            if len(resume['skills']) > 0:
+                suggestedSkills = skillSuggestion.suggestSkills(resume['skills'])
+            else:
+                print("resume.skills are empty")
 
+        else:
+            return jsonify({'status': "FAIL", 'message': "Extension Not Allowed"})
+
+    return jsonify({'status': "success", 'message': "File Uploaded Successfully", "data": resume, "grade": prediction[0], "suggSkills": suggestedSkills})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(6060), debug=True, threaded=True)
